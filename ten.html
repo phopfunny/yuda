@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมจับคู่ภัยพิบัติ 10 ประการ</title>
+    <script src="/_sdk/element_sdk.js"></script>
+    <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Sarabun', 'Prompt', Arial, sans-serif;
+            width: 100%;
+            height: 100%;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .game-wrapper {
+            width: 100%;
+            min-height: 100%;
+            background: linear-gradient(135deg, #8B4513 0%, #2C1810 100%);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .game-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0 0 20px 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .score-board {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            border-radius: 20px;
+            display: inline-block;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .score-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            margin: 0;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            aspect-ratio: 3/4;
+            background: white;
+            border-radius: 15px;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover:not(.flipped):not(.matched) {
+            transform: scale(1.05);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            opacity: 0.6;
+            cursor: default;
+            animation: matchPulse 0.6s ease;
+        }
+
+        @keyframes matchPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #8B0000 0%, #4B0000 100%);
+            font-size: 48px;
+        }
+
+        .card-front {
+            background: #FFF8DC;
+            transform: rotateY(180deg);
+            border: 3px solid #8B4513;
+        }
+
+        .card-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        /* 🖼️ โค้ด CSS ที่แก้ไขสำหรับการแสดงผลรูปภาพ (Image Files) */
+        .card-image {
+            /* ลบ font-size สำหรับ emoji ทิ้งไป */
+            max-width: 90%;
+            /* ทำให้รูปภาพไม่ล้นขอบไพ่ */
+            max-height: 90%;
+            /* ทำให้รูปภาพไม่ล้นขอบไพ่ */
+            object-fit: contain;
+            /* ปรับขนาดให้พอดีโดยไม่บิดเบือน */
+            padding: 5px;
+            display: flex;
+            /* เนื่องจากเราใช้แท็ก <img> โดยตรงใน JS เราจึงต้องกำหนดขนาดให้กับมัน */
+        }
+
+        .card-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* ---------------------------------------------------- */
+
+        .controls {
+            text-align: center;
+            /* ทำให้ปุ่มอยู่ตรงกลาง */
+            display: flex;
+            /* ใช้ Flexbox จัดเรียงปุ่ม */
+            justify-content: center;
+            /* จัดให้อยู่ตรงกลางแนวนอน */
+            gap: 20px;
+            /* เว้นระยะห่างระหว่างปุ่ม */
+        }
+
+        .reset-button,
+        .next-game-button {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap; /* ป้องกันการขึ้นบรรทัดใหม่ */
+        }
+        
+        /* สไตล์สำหรับปุ่มเริ่มเกมใหม่ (โทนน้ำตาล) */
+        .reset-button {
+            background: #FFF8DC;
+            color: #8B4513;
+            border: 3px solid #8B4513;
+        }
+
+        .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            background: #FFE4B5;
+        }
+
+        .reset-button:active {
+            transform: translateY(0);
+        }
+
+        /* 🆕 สไตล์สำหรับปุ่มเกมถัดไป (โทนเขียว/น้ำเงิน) */
+        .next-game-button {
+            background: #3CB371; /* Medium Sea Green */
+            color: #FFFFFF;
+            border: 3px solid #2E8B57; /* Sea Green */
+            display: none; /* ซ่อนไว้ก่อนจนกว่าเกมจะจบ */
+        }
+        
+        .next-game-button:hover {
+            background: #4CBB7D;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .next-game-button:active {
+            transform: translateY(0);
+        }
+        /* --------------------------------------------- */
+
+
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #FFF8DC;
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 3px solid #8B4513;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            font-size: 24px;
+            font-weight: bold;
+            color: #8B4513;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .info-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #FFF8DC;
+            color: #8B4513;
+            border: 3px solid #8B4513;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .info-button:hover {
+            background: #FFE4B5;
+            transform: scale(1.05);
+        }
+
+        .welcome-screen,
+        .history-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80%;
+            padding: 20px;
+        }
+
+        .welcome-card,
+        .history-card {
+            background: #FFF8DC;
+            border: 4px solid #8B4513;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-title,
+        .history-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #8B4513;
+            text-align: center;
+            margin: 0 0 30px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-content h2 {
+            font-size: 28px;
+            color: #8B4513;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .rules-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 30px 0;
+        }
+
+        .rules-list li {
+            font-size: 18px;
+            color: #333;
+            padding: 12px 20px;
+            margin: 10px 0;
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #8B4513;
+        }
+
+        .history-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.8;
+            text-align: center;
+            margin: 0 0 30px 0;
+        }
+
+        .plagues-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0 30px 0;
+        }
+
+        .plague-item {
+            font-size: 16px;
+            color: #333;
+            padding: 12px 15px;
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 10px;
+            border: 2px solid #8B4513;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .next-button,
+        .start-button {
+            width: 100%;
+            background: #8B4513;
+            color: #FFF8DC;
+            border: none;
+            padding: 18px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .next-button:hover,
+        .start-button:hover {
+            background: #A0522D;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .next-button:active,
+        .start-button:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+
+            .game-title {
+                font-size: 32px;
+            }
+
+            .score-text {
+                font-size: 24px;
+            }
+
+            .card-text {
+                font-size: 14px;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .reset-button,
+            .next-game-button {
+                width: 100%;
+                padding: 12px 20px;
+                font-size: 18px;
+            }
+
+            .welcome-title,
+            .history-title {
+                font-size: 32px;
+            }
+
+            .welcome-content h2 {
+                font-size: 24px;
+            }
+
+            .rules-list li {
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+
+            .history-text {
+                font-size: 16px;
+            }
+
+            .plagues-list {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .plague-item {
+                font-size: 15px;
+                padding: 10px;
+            }
+
+            .welcome-card,
+            .history-card {
+                padding: 25px;
+            }
+
+            .info-button {
+                top: 10px;
+                left: 10px;
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <style>
+        @view-transition {
+            navigation: auto;
+        }
+    </style>
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+    <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+</head>
+
+<body>
+    <div class="game-wrapper"><button class="info-button" id="infoButton" style="display: none;">ℹ️ ดูข้อมูล</button>
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-card">
+                <h1 class="welcome-title">✡️ ภัยพิบัติ 10 ประการ ✡️</h1>
+                <div class="welcome-content">
+                    <h2>🎮 กติกาการเล่น</h2>
+                    <ul class="rules-list">
+                        <li>🃏 คลิกไพ่ 2 ใบเพื่อจับคู่ข้อความกับรูปภาพที่ตรงกัน</li>
+                        <li>✅ จับคู่ถูก: <strong>+<span id="correctPointsDisplay">100</span> คะแนน</strong></li>
+                        <li>❌ จับคู่ผิด: <strong>-<span id="wrongPenaltyDisplay">20</span> คะแนน</strong></li>
+                        <li>🎯 เป้าหมาย: จับคู่ภัยพิบัติทั้ง 10 ประการให้ถูกต้อง</li>
+                        <li>🔄 สามารถกดดูข้อมูลเพื่อทบทวนประวัติได้ตลอดเวลา</li>
+                    </ul>
+                </div><button class="next-button" id="nextToHistory">ถัดไป →</button>
+            </div>
+        </div>
+        <div class="history-screen" id="historyScreen" style="display: none;">
+            <div class="history-card">
+                <h1 class="history-title">📜 ภัยพิบัติ 10 ประการ</h1>
+                <div class="history-content">
+                    <p class="history-text">ภัยพิบัติ 10 ประการ หมายถึงภัยพิบัติที่กล่าวถึงใน
+                        <strong>คัมภีร์ไบเบิลฉบับพันธสัญญาเดิม</strong> ที่พระเจ้าบอก<strong>โมเสส</strong>มาที่อียิปต์
+                        เพื่อกดดันฟาโรห์ให้ปล่อยชาวอิสราเอลออกจากการเป็นทาส
+                    </p>
+                    <div class="plagues-list">
+                        <div class="plague-item">
+                         น้ำกลายเป็นเลือด
+                        </div>
+                        <div class="plague-item">
+                          กบ
+                        </div>
+                        <div class="plague-item">
+                            ริ้น
+                        </div>
+                        <div class="plague-item">
+                            เหลือบ
+                        </div>
+                        <div class="plague-item">
+                             โรคระบาดในปศุสัตว์
+                        </div>
+                        <div class="plague-item">
+                             ฝี
+                        </div>
+                        <div class="plague-item">
+                             ลูกเห็บ
+                        </div>
+                        <div class="plague-item">
+                         ตั๊กแตน
+                        </div>
+                        <div class="plague-item">
+                         ความมืด
+                        </div>
+                        <div class="plague-item">
+                         มรณกรรมของบุตรหัวปี
+                        </div>
+                    </div>
+                </div><button class="start-button" id="startGame">เริ่มเกม 🎮</button>
+            </div>
+        </div>
+        <div class="game-container" id="gameContainer" style="display: none;">
+            <div class="header">
+                <h1 class="game-title" id="gameTitle">เกมจับคู่ไพ่</h1>
+                <div class="score-board">
+                    <p class="score-text">คะแนน: <span id="score">0</span></p>
+                </div>
+            </div>
+            <div class="cards-grid" id="cardsGrid"></div>
+            <div class="controls">
+                <button class="reset-button" id="resetButton">เริ่มเกมใหม่ 🔄</button>
+                <a href="redsea.html" target="_blank" class="next-game-button" id="nextGameButton" style="display: none;" >ด่านถัดไป</a> 
+            </div>
+        </div>
+    </div>
+    <script>
+        const defaultConfig = {
+            game_title: 'เกมจับคู่ไพ่',
+            correct_points: '100',
+            wrong_penalty: '20' // 💡 เปลี่ยนค่าเริ่มต้นให้เป็นตัวเลขเพื่อความชัดเจน
+        };
+
+        const cardPairs = [
+            { text: 'น้ำกลายเป็นเลือด', image: 'images/blood.jpg' },
+            { text: 'กบ', image: 'images/fog.jpg' },
+            { text: 'ริ้น', image: 'images/rin.jpg' },
+            { text: 'เหลือบ', image: 'images/luib.jpg' },
+            { text: 'โรคระบาดในปศุสัตว์', image: 'images/zoo.jpg' },
+            { text: 'ฝี', image: 'images/fi.jpg' },
+            { text: 'ลูกเห็บ', image: 'images/ice.jpg' },
+            { text: 'ตั๊กแตน', image: 'images/green.jpg' },
+            { text: 'ความมืด', image: 'images/darkness.jpg' },
+            { text: 'มรณกรรมของบุตรหัวปี', image: 'images/death.jpg' }
+        ];
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let score = 0;
+        let canFlip = true;
+        let gameStarted = false;
+        let isGameCompleted = false;
+        const nextGameButton = document.getElementById('nextGameButton');
+
+
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        function initGame() {
+            const cardsData = [];
+            cardPairs.forEach((pair, index) => {
+                cardsData.push({ id: index, type: 'text', content: pair.text, pairId: index });
+                cardsData.push({ id: index + 10, type: 'image', content: pair.image, pairId: index });
+            });
+
+            cards = shuffleArray(cardsData);
+            flippedCards = [];
+            matchedPairs = 0;
+            score = 0;
+            canFlip = true;
+            gameStarted = true;
+            isGameCompleted = false;
+
+            if (nextGameButton) {
+                nextGameButton.style.display = 'none';
+            }
+
+            updateScore();
+            renderCards();
+        }
+
+        function renderCards() {
+            const grid = document.getElementById('cardsGrid');
+            grid.innerHTML = '';
+
+            cards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.dataset.index = index;
+
+                const cardBack = document.createElement('div');
+                cardBack.className = 'card-face card-back';
+                cardBack.textContent = '✡️';
+
+                const cardFront = document.createElement('div');
+                cardFront.className = 'card-face card-front';
+
+                if (card.type === 'text') {
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'card-text';
+                    textDiv.textContent = card.content;
+                    cardFront.appendChild(textDiv);
+                }
+                else {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'card-image';
+
+                    const imageElement = document.createElement('img');
+                    imageElement.src = card.content;
+                    imageElement.alt = 'Plague Image';
+
+                    imageContainer.appendChild(imageElement);
+                    cardFront.appendChild(imageContainer);
+                }
+
+                cardElement.appendChild(cardBack);
+        cardElement.appendChild(cardFront);
+
+        cardElement.addEventListener('click', () => handleCardClick(index));
+
+        grid.appendChild(cardElement);
+      });
+    }
+
+    function handleCardClick(index) {
+      if (!canFlip) return;
+
+      const cardElement = document.querySelectorAll('.card')[index];
+      if (cardElement.classList.contains('flipped') || cardElement.classList.contains('matched')) {
+        return;
+      }
+
+      cardElement.classList.add('flipped');
+      flippedCards.push(index);
+
+      if (flippedCards.length === 2) {
+        canFlip = false;
+        checkMatch();
+      }
+    }
+
+    function checkMatch() {
+      const [index1, index2] = flippedCards;
+      const card1 = cards[index1];
+      const card2 = cards[index2];
+
+      const cardElements = document.querySelectorAll('.card');
+
+      setTimeout(() => {
+        if (card1.pairId === card2.pairId) {
+          cardElements[index1].classList.add('matched');
+          cardElements[index2].classList.add('matched');
+          matchedPairs++;
+
+          const correctPoints = parseInt(window.elementSdk?.config?.correct_points || defaultConfig.correct_points);
+          score += correctPoints;
+
+          showMessage(`✅ ถูกต้อง! +${correctPoints} คะแนน`);
+
+          if (matchedPairs === cardPairs.length) {
+            setTimeout(() => {
+              showMessage(`🎉 เยี่ยมมาก! คะแนนรวม: ${score} คะแนน`);
+            }, 1000);
+          }
+        } else {
+          cardElements[index1].classList.remove('flipped');
+          cardElements[index2].classList.remove('flipped');
+
+          const wrongPenalty = parseInt(window.elementSdk?.config?.wrong_penalty || defaultConfig.wrong_penalty);
+          score -= wrongPenalty;
+
+          showMessage(`❌ ผิด! -${wrongPenalty} คะแนน`);
+        }
+
+        updateScore();
+        flippedCards = [];
+        canFlip = true;
+      }, 1000);
+    }
+
+    function updateScore() {
+      document.getElementById('score').textContent = score;
+    }
+
+    function showMessage(text) {
+      const existingMessage = document.querySelector('.message');
+      if (existingMessage) {
+        existingMessage.remove();
+      }
+
+      const message = document.createElement('div');
+      message.className = 'message';
+      message.textContent = text;
+      document.body.appendChild(message);
+
+      setTimeout(() => {
+        message.remove();
+      }, 1500);
+    }
+
+    async function onConfigChange(config) {
+      const gameTitle = document.getElementById('gameTitle');
+      if (gameTitle) {
+        gameTitle.textContent = config.game_title || defaultConfig.game_title;
+      }
+
+      const correctPointsDisplay = document.getElementById('correctPointsDisplay');
+      if (correctPointsDisplay) {
+        correctPointsDisplay.textContent = config.correct_points || defaultConfig.correct_points;
+      }
+
+      const wrongPenaltyDisplay = document.getElementById('wrongPenaltyDisplay');
+      if (wrongPenaltyDisplay) {
+        wrongPenaltyDisplay.textContent = config.wrong_penalty || defaultConfig.wrong_penalty;
+      }
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['game_title', config.game_title || defaultConfig.game_title],
+        ['correct_points', config.correct_points || defaultConfig.correct_points],
+        ['wrong_penalty', config.wrong_penalty || defaultConfig.wrong_penalty]
+      ]);
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities,
+        mapToEditPanelValues
+      });
+    }
+
+    document.getElementById('nextToHistory').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('welcomeScreen').style.display = 'none';
+      document.getElementById('historyScreen').style.display = 'flex';
+    });
+
+    document.getElementById('startGame').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('historyScreen').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'block';
+      document.getElementById('infoButton').style.display = 'block';
+      
+      if (!gameStarted) {
+        initGame();
+      }
+    });
+
+    document.getElementById('infoButton').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('gameContainer').style.display = 'none';
+      document.getElementById('infoButton').style.display = 'none';
+      document.getElementById('historyScreen').style.display = 'flex';
+    });
+
+    document.getElementById('resetButton').addEventListener('click', (e) => {
+      e.preventDefault();
+      initGame();
+    });
+  </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9a3d64a27588fd9e',t:'MTc2NDAzNDM1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>

@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="th">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>The Red Sea Game - Revised</title>
+
+    <style>
+        /* --- General Styling --- */
+
+        body {
+
+            box-sizing: border-box;
+
+            margin: 0;
+
+            padding: 0;
+
+            height: 100%;
+
+            overflow: hidden;
+
+            font-family: 'Kanit', 'Sarabun', sans-serif;
+
+        }
+
+
+
+        html {
+
+            height: 100%;
+
+        }
+
+
+
+        #game-container {
+
+            width: 100%;
+
+            height: 100%;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background: linear-gradient(to bottom, #87CEEB 0%, #4A90E2 100%);
+
+            position: relative;
+
+        }
+
+
+
+        #game-header {
+
+            padding: 15px 20px;
+
+            background: rgba(0, 0, 0, 0.7);
+
+            color: white;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            flex-wrap: wrap;
+
+            gap: 10px;
+
+        }
+
+
+
+        #game-title {
+
+            font-size: 28px;
+
+            font-weight: bold;
+
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+
+        }
+
+
+
+        #stats {
+
+            display: flex;
+
+            gap: 20px;
+
+            font-size: 18px;
+
+        }
+
+
+
+        .stat-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 5px;
+
+        }
+
+
+
+        /* --- Game Canvas and Map Structure (The Narrow Path) --- */
+
+        #game-canvas {
+
+            flex: 1;
+
+            position: relative;
+
+            overflow: hidden;
+
+            background: #FCD34D;
+
+            /* Yellow/Sand color for the path */
+
+        }
+
+
+
+        /* ⭐ NEW CSS: Barrage Warning Flash */
+
+        #game-canvas.barrage-alert {
+
+            animation: redAlert 0.5s ease-out 1;
+            /* กะพริบ 1 ครั้ง ใช้เวลา 0.5 วินาที */
+
+        }
+
+        @keyframes redAlert {
+
+            0% {
+                background-color: #FCD34D;
+            }
+
+            /* เริ่ม/จบด้วยสีพื้นหลังปกติ (สีเหลือง) */
+
+            50% {
+                background-color: #FF0000;
+            }
+
+            /* กึ่งกลางเป็นสีแดงสว่าง */
+
+            100% {
+                background-color: #FCD34D;
+            }
+
+        }
+
+
+
+        /* Finish Line Styling */
+
+        #finish-line {
+
+            position: absolute;
+
+            top: 0;
+
+            /* อยู่ด้านบนสุดของ Canvas */
+
+            left: 15%;
+
+            /* เริ่มจากขอบของ Water Wall ด้านซ้าย (15%) */
+
+            width: 70%;
+
+            /* ความกว้างของ Path (100% - 15% ซ้าย - 15% ขวา) */
+
+            height: 5px;
+
+            /* ความหนาของเส้น */
+
+            background: white;
+
+            border: 2px solid gold;
+
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+
+            z-index: 10;
+
+        }
+
+
+
+        /* Water Walls (unchanged) */
+
+        .water-wall {
+
+            position: absolute;
+
+            width: 15%;
+
+            height: 100%;
+
+            top: 0;
+
+            background: linear-gradient(90deg, #1E40AF 0%, #3B82F6 50%, #1E40AF 100%);
+
+            opacity: 0.9;
+
+            box-shadow: inset 0 0 25px rgba(30, 64, 175, 0.9);
+
+            z-index: 5;
+
+        }
+
+
+
+        .water-wall-left {
+
+            left: 0;
+
+            animation: wave-left 3s ease-in-out infinite;
+
+        }
+
+
+
+        .water-wall-right {
+
+            right: 0;
+
+            animation: wave-right 3s ease-in-out infinite;
+
+        }
+
+
+
+        @keyframes wave-left {
+
+            0%,
+
+            100% {
+
+                transform: translateX(0);
+
+            }
+
+            50% {
+
+                transform: translateX(5px);
+
+            }
+
+        }
+
+
+
+        @keyframes wave-right {
+
+            0%,
+
+            100% {
+
+                transform: translateX(0);
+
+            }
+
+            50% {
+
+                transform: translateX(-5px);
+
+            }
+
+        }
+
+
+
+        /* --- Game Elements --- */
+
+        #player {
+
+            position: absolute;
+
+            width: 40px;
+
+            height: 40px;
+
+            font-size: 36px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            z-index: 10;
+
+            transition: none;
+
+        }
+
+
+
+        .enemy {
+
+            position: absolute;
+
+            width: 35px;
+
+            height: 35px;
+
+            font-size: 32px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            z-index: 8;
+
+        }
+
+
+
+        /* --- UI Overlays (Unchanged) --- */
+
+        #instructions {
+
+            position: absolute;
+
+            top: 50%;
+
+            left: 50%;
+
+            transform: translate(-50%, -50%);
+
+            background: rgba(0, 0, 0, 0.85);
+
+            color: white;
+
+            padding: 30px 40px;
+
+            border-radius: 15px;
+
+            text-align: center;
+
+            z-index: 100;
+
+            max-width: 90%;
+
+        }
+
+
+
+        #instructions h2 {
+
+            margin: 0 0 20px 0;
+
+            font-size: 32px;
+
+        }
+
+
+
+        #instructions p {
+
+            margin: 10px 0;
+
+            font-size: 18px;
+
+            line-height: 1.6;
+
+        }
+
+
+
+        #start-btn {
+
+            margin-top: 20px;
+
+            padding: 12px 30px;
+
+            font-size: 20px;
+
+            background: #10B981;
+
+            color: white;
+
+            border: none;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+            transition: background 0.3s;
+
+        }
+
+
+
+        #start-btn:hover {
+
+            background: #059669;
+
+        }
+
+
+
+        #game-over {
+
+            position: absolute;
+
+            top: 50%;
+
+            left: 50%;
+
+            transform: translate(-50%, -50%);
+
+            background: rgba(0, 0, 0, 0.9);
+
+            color: white;
+
+            padding: 40px 50px;
+
+            border-radius: 15px;
+
+            text-align: center;
+
+            z-index: 100;
+
+            display: none;
+
+        }
+
+
+
+        #game-over h2 {
+
+            margin: 0 0 15px 0;
+
+            font-size: 36px;
+
+        }
+
+
+
+        #game-over p {
+
+            margin: 10px 0 25px 0;
+
+            font-size: 20px;
+
+        }
+
+
+
+        #restart-btn {
+
+            padding: 12px 30px;
+
+            font-size: 20px;
+
+            background: #3B82F6;
+
+            color: white;
+
+            border: none;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+            transition: background 0.3s;
+
+        }
+
+
+
+        #restart-btn:hover {
+
+            background: #2563EB;
+
+        }
+
+
+
+        #victory {
+
+            position: absolute;
+
+            top: 50%;
+
+            left: 50%;
+
+            transform: translate(-50%, -50%);
+
+            background: rgba(16, 185, 129, 0.95);
+
+            color: white;
+
+            padding: 40px 50px;
+
+            border-radius: 15px;
+
+            text-align: center;
+
+            z-index: 100;
+
+            display: none;
+
+        }
+
+
+
+        #victory h2 {
+
+            margin: 0 0 15px 0;
+
+            font-size: 36px;
+
+        }
+
+
+
+        #victory p {
+
+            margin: 10px 0 25px 0;
+
+            font-size: 20px;
+
+        }
+
+
+
+        #play-again-btn {
+
+            padding: 12px 30px;
+
+            font-size: 20px;
+
+            background: white;
+
+            color: #10B981;
+
+            border: none;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
+            transition: all 0.3s;
+
+        }
+
+
+
+        #play-again-btn:hover {
+
+            background: #F0FDF4;
+
+            transform: scale(1.05);
+
+        }
+
+
+
+        .power-active {
+
+            animation: power-flash 0.3s ease-in-out;
+
+            filter: brightness(1.5);
+
+        }
+
+
+
+        @keyframes power-flash {
+
+            0%,
+
+            100% {
+
+                opacity: 1;
+
+            }
+
+            50% {
+
+                opacity: 0.3;
+
+            }
+
+        }
+    </style>
+
+</head>
+
+
+
+<body>
+
+
+
+    <div id="game-container">
+
+        <div id="game-header">
+
+            <div id="game-title">
+
+                The Red Sea
+
+            </div>
+
+            <div id="stats">
+
+                <div class="stat-item"><span>⏱️</span> <span id="time">0</span>
+
+                </div>
+
+                <div class="stat-item"><span>📏</span> <span id="distance">0%</span>
+
+                </div>
+
+                <div class="stat-item"><span>⚡</span> <span id="powers">1</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div id="game-canvas">
+
+            <div class="water-wall water-wall-left"></div>
+
+            <div class="water-wall water-wall-right"></div>
+
+            <div id="finish-line"></div>
+
+            <div id="player">
+
+                🧙‍♂️
+
+            </div>
+
+        </div>
+
+        <div id="instructions">
+
+            <h2>The Red Sea</h2>
+
+            <p><strong>ใช้ลูกศร เพื่อขยับ</strong></p>
+
+            <p>รีบวิ่งไปให้ถึงเส้นชัย (เส้นสีขาวด้านบน) ก่อนทหารจะตามทัน!</p>
+
+            <p><strong>กด SPACE เพื่อใช้พลังไม้เท้า</strong> (หยุดทหารชั่วคราว มี **1 ครั้ง**)</p>
+
+            <p>นำโมเสสและชาวฮีบรูไปให้ถึงฝั่งตรงข้าม!</p><button id="start-btn">เริ่มเกม</button>
+
+        </div>
+
+        <div id="game-over">
+
+            <h2>เกมจบ!</h2>
+
+            <p id="game-over-message"></p><button id="restart-btn">เล่นอีกครั้ง</button>
+
+        </div>
+
+        <div id="victory">
+
+            <h2>🎉 ชัยชนะ! 🎉</h2>
+
+            <p>คุณนำโมเสสและชาวฮีบรูข้ามทะเลแดงได้สำเร็จ!</p><button id="play-again-btn">เล่นอีกครั้ง</button>
+
+        </div>
+
+    </div>
+
+
+
+    <script>
+
+        // #region Game Configuration and Variables
+
+
+
+        // Constants
+
+        const ENEMY_WIDTH = 35;
+
+        const ENEMY_HEIGHT = 35;
+
+        const ENEMY_SEEK_SPEED = 0.5;
+
+        const BARRAGE_INTERVAL = 3; // ทหารเรียงกระดานจะถูกปล่อยทุก 10 วินาที
+
+
+        // Game State Variables
+
+        let gameState = 'menu';
+
+        let player = {
+
+            x: 0,
+
+            y: 0,
+
+            speed: 1.2,
+
+            width: 40,
+
+            height: 40
+
+        };
+
+
+
+        let enemies = [];
+
+        let keys = {};
+
+        let timeElapsed = 0;
+
+        let distance = 0;
+
+        let powers = 1;
+
+        let gameInterval;
+
+        let spawnInterval;
+
+        let powerActive = false;
+
+        let scrollSpeed = 0.5;
+
+        let enemySpeed = 1;
+
+        const enemySpawnRate = 1000;
+
+
+
+        // DOM Elements
+
+        const canvas = document.getElementById('game-canvas');
+
+        const playerEl = document.getElementById('player');
+
+        const instructionsEl = document.getElementById('instructions');
+
+        const gameOverEl = document.getElementById('game-over');
+
+        const victoryEl = document.getElementById('victory');
+
+        const startBtn = document.getElementById('start-btn');
+
+        const restartBtn = document.getElementById('restart-btn');
+
+        const playAgainBtn = document.getElementById('play-again-btn');
+
+        const finishLineEl = document.getElementById('finish-line');
+
+
+
+        // #endregion
+
+
+
+        // #region Game Functions
+
+
+
+        function updateStats() {
+
+            document.getElementById('time').textContent = timeElapsed;
+
+            document.getElementById('distance').textContent = Math.min(100, Math.floor(distance)) + '%';
+
+            document.getElementById('powers').textContent = powers;
+
+        }
+
+
+
+        function checkCollision(obj1, obj2) {
+
+            return obj1.x < obj2.x + obj2.width &&
+
+                obj1.x + obj1.width > obj2.x &&
+
+                obj1.y < obj2.y + obj2.height &&
+
+                obj1.y + obj1.height > obj2.y;
+
+        }
+
+
+
+        function checkFinishLineCollision() {
+
+            const lineTop = finishLineEl.offsetTop;
+
+
+
+            if (player.y <= lineTop) {
+
+                victory();
+
+                return true;
+
+            }
+
+            return false;
+
+        }
+
+
+
+        function resetGame() {
+
+            const wallWidth = canvas.offsetWidth * 0.15;
+
+            const pathCenter = canvas.offsetWidth / 2 - player.width / 2;
+
+
+
+            player.x = pathCenter;
+
+            player.y = canvas.offsetHeight - player.height * 2;
+
+
+
+            enemies.forEach(enemy => enemy.el.remove());
+
+
+
+            enemies = [];
+
+            timeElapsed = 0;
+
+            distance = 0;
+
+            powers = 1;
+
+            scrollSpeed = 0.5;
+
+            enemySpeed = 1;
+
+            powerActive = false;
+
+
+
+            canvas.classList.remove('power-active');
+
+            gameOverEl.style.display = 'none';
+
+            victoryEl.style.display = 'none';
+
+
+
+            playerEl.style.left = player.x + 'px';
+
+            playerEl.style.top = player.y + 'px';
+
+
+
+            updateStats();
+
+        }
+
+
+
+        function endGame(message) {
+
+            gameState = 'over';
+
+            clearInterval(gameInterval);
+
+            clearInterval(spawnInterval);
+
+
+
+            document.getElementById('game-over-message').textContent = message;
+
+            gameOverEl.style.display = 'block';
+
+        }
+
+
+
+        function victory() {
+
+            gameState = 'victory';
+
+            clearInterval(gameInterval);
+
+            clearInterval(spawnInterval);
+
+
+
+            document.getElementById('distance').textContent = '100%';
+
+            victoryEl.style.display = 'block';
+
+        }
+
+
+
+        function spawnEnemy() {
+
+            const wallWidth = canvas.offsetWidth * 0.15;
+
+            const pathWidth = canvas.offsetWidth - (2 * wallWidth);
+
+
+
+            const randomX = wallWidth + (Math.random() * (pathWidth - ENEMY_WIDTH));
+
+
+
+            const enemy = {
+
+                x: randomX,
+
+                y: canvas.offsetHeight + 10,
+
+                width: ENEMY_WIDTH,
+
+                height: ENEMY_HEIGHT,
+
+                el: document.createElement('div')
+
+            };
+
+
+
+            enemy.el.className = 'enemy';
+
+            enemy.el.textContent = '🏇';
+
+            enemy.el.style.left = enemy.x + 'px';
+
+            enemy.el.style.top = enemy.y + 'px';
+
+
+
+            canvas.appendChild(enemy.el);
+
+            enemies.push(enemy);
+
+        }
+
+
+
+        function spawnEnemyBarrage() {
+
+            const wallWidth = canvas.offsetWidth * 0.15;
+
+            const pathWidth = canvas.offsetWidth - (2 * wallWidth);
+
+
+
+            // กำหนดระยะห่างระหว่างทหาร
+
+            const ENEMY_SPACING = ENEMY_WIDTH + 10;
+
+            const numEnemies = Math.floor(pathWidth / ENEMY_SPACING);
+
+
+
+            // คำนวณตำแหน่ง X เริ่มต้นเพื่อให้ทหารอยู่ตรงกลาง
+
+            const totalEnemyWidth = numEnemies * ENEMY_SPACING - 10;
+
+            const startX = wallWidth + (pathWidth - totalEnemyWidth) / 2;
+
+
+
+            const startY = canvas.offsetHeight + 10;
+
+
+
+            for (let i = 0; i < numEnemies; i++) {
+
+                const enemy = {
+
+                    x: startX + (i * ENEMY_SPACING),
+
+                    y: startY,
+
+                    width: ENEMY_WIDTH,
+
+                    height: ENEMY_HEIGHT,
+
+                    el: document.createElement('div')
+
+                };
+
+
+
+                enemy.el.className = 'enemy';
+
+                enemy.el.textContent = '💂';
+
+                enemy.el.style.left = enemy.x + 'px';
+
+                enemy.el.style.top = enemy.y + 'px';
+
+
+
+                canvas.appendChild(enemy.el);
+
+                enemies.push(enemy);
+
+            }
+
+        }
+
+
+
+        function spawnObjects() {
+
+            if (gameState !== 'playing') return;
+
+
+
+            // Spawn random enemies
+
+            if (Math.random() < 0.8) {
+
+                spawnEnemy();
+
+            }
+
+        }
+
+
+
+        function usePower() {
+
+            if (powers > 0 && !powerActive) {
+
+                powers--;
+
+                powerActive = true;
+
+
+
+                canvas.classList.add('power-active');
+
+
+
+                setTimeout(() => {
+
+                    powerActive = false;
+
+                    canvas.classList.remove('power-active');
+
+                }, 3000);
+
+
+
+                updateStats();
+
+            }
+
+        }
+
+
+
+        function gameLoop() {
+
+            if (gameState !== 'playing') return;
+
+
+
+            const wallWidth = canvas.offsetWidth * 0.15;
+
+            const maxPathX = canvas.offsetWidth - wallWidth - player.width;
+
+            const minPathX = wallWidth;
+
+            const maxPathY = canvas.offsetHeight - player.height;
+
+            const minPathY = 0;
+
+
+
+            // Player Movement
+
+            if (keys['arrowleft'] || keys['a']) {
+
+                player.x = Math.max(minPathX, player.x - player.speed);
+
+            }
+
+            if (keys['arrowright'] || keys['d']) {
+
+                player.x = Math.min(maxPathX, player.x + player.speed);
+
+            }
+
+            if (keys['arrowup'] || keys['w']) {
+
+                player.y = Math.max(minPathY, player.y - player.speed);
+
+            }
+
+            if (keys['arrowdown'] || keys['s']) {
+
+                player.y = Math.min(maxPathY, player.y + player.speed);
+
+            }
+
+
+
+            playerEl.style.left = player.x + 'px';
+
+            playerEl.style.top = player.y + 'px';
+
+
+
+            if (checkFinishLineCollision()) {
+
+                return;
+
+            }
+
+
+
+            const maxGameY = canvas.offsetHeight - player.height;
+
+            if (maxGameY > 0) {
+
+                distance = 100 - ((player.y / maxGameY) * 100);
+
+            } else {
+
+                distance = 0;
+
+            }
+
+
+
+            // Move and check enemies
+
+            enemies = enemies.filter(enemy => {
+
+
+
+                // AI Seeking Logic: ทำให้ทหารหันตามตัวละคร
+
+                if (enemy.x < player.x) {
+
+                    enemy.x += ENEMY_SEEK_SPEED;
+
+                } else if (enemy.x > player.x) {
+
+                    enemy.x -= ENEMY_SEEK_SPEED;
+
+                }
+
+
+
+                if (!powerActive) {
+
+                    enemy.y -= enemySpeed; // Enemy moves up
+
+                }
+
+
+
+                enemy.el.style.top = enemy.y + 'px';
+
+                enemy.el.style.left = enemy.x + 'px';
+
+
+
+                if (checkCollision(player, enemy)) {
+
+                    endGame('ทหารอียิปต์จับคุณได้!');
+
+                    return false;
+
+                }
+
+
+
+                if (enemy.y < -ENEMY_HEIGHT) {
+
+                    enemy.el.remove();
+
+                    return false;
+
+                }
+
+
+
+                return true;
+
+            });
+
+
+
+            updateStats();
+
+        }
+
+
+
+        function startGame() {
+
+            gameState = 'playing';
+
+            instructionsEl.style.display = 'none';
+
+            resetGame();
+
+
+
+            gameInterval = setInterval(gameLoop, 1000 / 60);
+
+            spawnInterval = setInterval(spawnObjects, enemySpawnRate);
+
+
+
+            // Time elapsed and Difficulty tracker
+
+            const timerInterval = setInterval(() => {
+
+                if (gameState !== 'playing') {
+
+                    clearInterval(timerInterval);
+
+                    return;
+
+                }
+
+                timeElapsed++;
+
+
+
+                // ⭐ การแจ้งเตือนไฟสีแดงก่อนทหารเรียงกระดานมา 1 วินาที
+
+                if (timeElapsed > 0 && (timeElapsed + 1) % BARRAGE_INTERVAL === 0) {
+
+                    canvas.classList.add('barrage-alert');
+
+                    setTimeout(() => {
+
+                        canvas.classList.remove('barrage-alert');
+
+                    }, 500);
+
+                }
+
+
+
+                // ปล่อยทหารเรียงกระดาน
+
+                if (timeElapsed > 0 && timeElapsed % BARRAGE_INTERVAL === 0) {
+
+                    spawnEnemyBarrage();
+
+                }
+
+
+
+                // Difficulty Scaling
+
+                if (distance < 50) {
+
+                    enemySpeed = 2.0 + (distance * 0.02);
+
+                } else {
+
+                    enemySpeed = 3.0 + ((distance - 50) * 0.015);
+
+                }
+
+
+
+                updateStats();
+
+            }, 1000);
+
+        }
+
+
+
+        function restartGame() {
+
+            startGame();
+
+        }
+
+
+
+        // #endregion
+
+
+
+        // #region Initialization and Event Handlers
+
+
+
+        // Event Listeners
+
+        document.addEventListener('keydown', (e) => {
+
+            const key = e.key.toLowerCase();
+
+            keys[key] = true;
+
+            if (key === ' ' && gameState === 'playing') {
+
+                e.preventDefault();
+
+                usePower();
+
+            }
+
+        });
+
+
+
+        document.addEventListener('keyup', (e) => {
+
+            keys[e.key.toLowerCase()] = false;
+
+        });
+
+
+
+        startBtn.addEventListener('click', startGame);
+
+        restartBtn.addEventListener('click', restartGame);
+
+        playAgainBtn.addEventListener('click', restartGame);
+
+
+
+        // Initial setup
+
+        window.addEventListener('load', () => {
+
+            resetGame();
+
+            gameOverEl.style.display = 'none';
+
+            victoryEl.style.display = 'none';
+
+        });
+
+
+
+        // #endregion
+
+    </script>
+
+</body>
+
+
+
+</html>
